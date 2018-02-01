@@ -1,0 +1,84 @@
+[[patterns]]
+description = "Password properties"
+pattern = "Password = \"[^\"]+\"[^;]+"
+
+[[patterns]]
+description = "Password nodes"
+pattern = "description=\"[^\"]+Password\""
+
+[[patterns]]
+description = "Machine keys useful for RCE"
+pattern = "<machineKey "
+enabled = true
+
+[[patterns]]
+description = "SQL Server Credential"
+pattern = ";\\w*User ID="
+enabled = true
+
+[[patterns]]
+description = "Azure Account Keys"
+pattern = "AccountKey="
+enabled = true
+
+[[patterns]]
+description = "Azure Account Keys"
+pattern = "Accountdescription="
+enabled = true
+
+[[patterns]]
+description = "NetworkCredential"
+pattern = "Network-Credential "
+enabled = true
+
+[[patterns]]
+description = "SQL Server Connection String"
+pattern = "(Data Source=|Initial Catalog=).+Password=.+(Data Source=|Initial Catalog=)"
+enabled = true
+
+[[patterns]]
+description = "Password properties"
+pattern = "Password="
+enabled = true
+
+[[patterns]]
+description = "XML description attribute containing password"
+pattern = "description=\"[^\"]+Password\""
+enabled = true
+
+[[patterns]]
+description = "Secret Keys"
+pattern = "=\"[\\w\\s]+(Secret|Key)\""
+
+[[patterns]]
+description = "Service Bus"
+pattern = ";SharedAccessKeydescription="
+
+[[patterns]]
+description = "Password in code"
+pattern = "Password = \"[^\"]+\"[^;]+"
+
+[[patterns]]
+description = "X509Certificate2 Constructor with Password"
+pattern = "X509Certificate2\\([A-Za-z09]+, \"[^\"]+\""
+
+[[filters]]
+description = "Remove obvious bad hits for things like designer documents"
+pattern = "TKey"
+
+[[filters]]
+description = "Remove bad hits in documentation"
+pattern = "cref"
+
+[[filters]]
+description = "Remove bad hits in documentation"
+pattern = "</param>"
+
+[[files]]
+description = "Publisher settings file for Azure Management"
+extension = "publishsettings"
+
+[[files]]
+description = "Private key file"
+extension = "pfx"
+binary = true
