@@ -94,7 +94,7 @@ struct PatternMatch {
 fn main() {
     let args = App::new("Source Secrets")
         .version("1.0")
-        .author("Lander Brandt <lander@conficker.io>")
+        .author("Lander Brandt <github.com/landaire/sourcesecrets>")
         .about("Searches a git repository for secrets")
         .arg(
             Arg::with_name("repos")
