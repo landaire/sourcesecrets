@@ -8,11 +8,18 @@ Repository maintainers sometimes do not fully consider the impact of the "secret
 
 ## usage
 
+Example 1:
+
 ```
 sourcesecrets -o secrets.csv repos/*/
 ```
 
+Example 2:
+
+```
+sourcesecrets -o secrets.csv -d definitions.private.toml repo_path
+```
+
 ## improvements to be made
 
-1. This application uses the `grep` crate. This was done entirely because ripgrep, a fast text search application, parses/evaluates regex and I decided to use the same crate they use. This may not be the best-fit regex crate for this scenario.
-2. The `git` utility is invoked for *every* commit to get contents and other details. Using some `libgit2` bindings or another library may provide benefits over the overhead of invoking a new process for every commit.
+1. The `git` utility is invoked for *every* commit to get contents and other details. Using some `libgit2` bindings or another library may provide benefits over the overhead of invoking a new process for every commit.
