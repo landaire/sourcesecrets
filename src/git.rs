@@ -23,9 +23,7 @@ pub struct GitClient {
 
 impl GitClient {
     pub fn new(repo_path: String) -> GitClient {
-        GitClient {
-            repo_path: repo_path,
-        }
+        GitClient { repo_path }
     }
 
     pub fn get_commits(&self, since_date: Option<&str>, until_date: Option<&str>) -> Vec<Commit> {
@@ -46,7 +44,7 @@ impl GitClient {
 
         let result = self.exec(args.as_slice());
 
-        return str::lines(&String::from_utf8(result.stdout).unwrap())
+        str::lines(&String::from_utf8(result.stdout).unwrap())
             .map(|l| {
                 let mut parts = l.split_whitespace();
                 Commit {
@@ -54,7 +52,7 @@ impl GitClient {
                     date: parts.next().unwrap().to_string(),
                     client: None,
                 }
-            }).collect::<Vec<Commit>>();
+            }).collect::<Vec<Commit>>()
     }
 
     pub fn get_commit_content(&self, commit: &Commit) -> String {
@@ -69,7 +67,7 @@ impl GitClient {
     pub fn get_file_at_commit(&self, commit: &str, filename: Option<&String>) -> Vec<u8> {
         let commit = match filename {
             Some(path) => format!("{}:{}", commit.to_string(), path),
-            None => format!("{}", commit.to_string()),
+            None => commit.to_string(),
         };
         let args = vec!["show".to_string(), commit];
         let output = self.exec(&args);

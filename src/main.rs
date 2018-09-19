@@ -33,6 +33,7 @@ use std::vec::Vec;
 use git::{ChangeType, Commit, GitClient};
 
 const NUM_THREADS: usize = 6;
+const MAX_LINE_LENGTH: usize = 5000;
 static mut VERBOSE: bool = false;
 static THREAD_DONE_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
@@ -206,7 +207,7 @@ fn main() {
 
     // loop over all of the patterns to compile their regexes
     if filters.is_some() {
-        let mut filters = filters.as_mut().unwrap();
+        let filters = filters.as_mut().unwrap();
         for filter in &mut filters.into_iter() {
             if !filter.enabled.unwrap_or(true) {
                 continue;
@@ -267,7 +268,7 @@ fn main() {
     )));
     let found_matches = Arc::new(RwLock::new(VecDeque::new() as VecDeque<PatternMatch>));
 
-    if all_commits.len() == 0 {
+    if all_commits.is_empty() {
         println!("No commits found to search");
         return;
     }
@@ -275,10 +276,11 @@ fn main() {
     let commits_per_thread = all_commits.len() / NUM_THREADS;
     let last_thread_commit_count = commits_per_thread + (all_commits.len() % NUM_THREADS);
     for i in 0..NUM_THREADS {
-        let mut num_commits = commits_per_thread;
-        if i == NUM_THREADS - 1 {
-            num_commits = last_thread_commit_count;
-        }
+        let mut num_commits = if i == NUM_THREADS - 1 {
+            last_thread_commit_count
+        } else {
+            commits_per_thread
+        };
 
         let commits: VecDeque<Commit> = VecDeque::from_iter(all_commits.drain(0..num_commits));
         let patterns = patterns.clone();
@@ -289,9 +291,9 @@ fn main() {
         threads.push(thread::spawn(move || {
             pattern_matcher_thread(
                 commits,
-                patterns,
-                files,
-                pb,
+                &patterns,
+                &files,
+                &pb,
                 move |matched: PatternMatch| {
                     match matched.match_type {
                         MatchType::Pattern => {
@@ -320,7 +322,7 @@ fn main() {
                     if pattern_match.match_type == MatchType::Pattern && filters.as_ref().is_some()
                     {
                         let filters = filters.as_ref().unwrap();
-                        for &ref filter in filters {
+                        for filter in filters {
                             if filter.regex.as_ref().unwrap().is_match(&pattern_match.text) {
                                 continue 'outer;
                             }
@@ -347,9 +349,9 @@ fn main() {
 
 fn pattern_matcher_thread<F, T>(
     mut commits: VecDeque<Commit>,
-    patterns: Vec<Pattern>,
-    files: Vec<FilePattern>,
-    pb: Arc<Mutex<ProgressBar<T>>>,
+    patterns: &[Pattern],
+    files: &[FilePattern],
+    pb: &Arc<Mutex<ProgressBar<T>>>,
     on_found: F,
 ) where
     F: Fn(PatternMatch),
@@ -400,15 +402,15 @@ fn pattern_matcher_thread<F, T>(
                         file_name = Some(line.chars().skip(13).collect());
                         file_name =
                             Some(file_name.unwrap().split(" b/").next().unwrap().to_string());
-                        
-                        for file in &files {
+
+                        for file in files {
                             // just check if the line contains the extension first
-                            if line.contains(&file.extension) {
-                                if file_name.as_ref().unwrap().ends_with(&file.extension) {
-                                    in_file = true;
-                                    file_info = Some(file.clone());
-                                    continue 'outer;
-                                }
+                            if line.contains(&file.extension)
+                                && file_name.as_ref().unwrap().ends_with(&file.extension)
+                            {
+                                in_file = true;
+                                file_info = Some(file.clone());
+                                continue 'outer;
                             }
                         }
 
@@ -427,7 +429,7 @@ fn pattern_matcher_thread<F, T>(
                             // contents now
                             let mut file_data =
                                 client.get_file_at_commit(file_index.as_ref().unwrap(), None);
-                            if file_data.len() == 0 {
+                            if file_data.is_empty() {
                                 file_data = client.get_file_at_commit(
                                     &commit.hash,
                                     Some(file_name.as_ref().unwrap()),
@@ -435,10 +437,11 @@ fn pattern_matcher_thread<F, T>(
                             }
 
                             let file_data_string: String =
-                                match file_info.as_ref().unwrap().binary.unwrap_or(false) {
+                                if file_info.as_ref().unwrap().binary.unwrap_or(false) {
                                     // if it's a binary file we need to encode as base64
-                                    true => encode(&file_data.as_slice()),
-                                    false => String::from_utf8_lossy(&file_data).into_owned(),
+                                    encode(&file_data.as_slice())
+                                } else {
+                                    String::from_utf8_lossy(&file_data).into_owned()
                                 };
 
                             let fname = file_name.as_ref().unwrap().clone();
@@ -465,8 +468,7 @@ fn pattern_matcher_thread<F, T>(
                         continue;
                     }
 
-                    // arbitrary length
-                    if line.len() > 5000 {
+                    if line.len() > MAX_LINE_LENGTH {
                         verbose_print!("Skipping line -- too long");
                         continue;
                     }
@@ -487,16 +489,16 @@ fn pattern_matcher_thread<F, T>(
 }
 
 fn check_patterns<F>(
-    patterns: &Vec<Pattern>,
+    patterns: &[Pattern],
     line: &str,
     on_found: &F,
-    repo_path: &String,
-    file_name: &String,
+    repo_path: &str,
+    file_name: &str,
     commit: &Commit,
 ) where
     F: Fn(PatternMatch),
 {
-    for &ref pattern in patterns {
+    for pattern in patterns {
         if !pattern.enabled.unwrap_or(true) {
             continue;
         }
@@ -526,14 +528,14 @@ fn check_patterns<F>(
                 description: pattern.description.clone(),
                 text: matched_text.trim().to_owned(),
                 match_type: MatchType::Pattern,
-                repo_path: repo_path.clone(),
+                repo_path: repo_path.to_string(),
                 file: file_name.to_owned(),
                 full_path: Path::new(&repo_path)
                     .join(file_name)
                     .into_os_string()
                     .into_string()
                     .unwrap(),
-                change_type: change_type,
+                change_type,
                 commit_hash: commit.hash.clone(),
                 commit_date: commit.date.clone(),
             };
