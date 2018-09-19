@@ -39,16 +39,18 @@ static THREAD_DONE_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 macro_rules! verbose_print(
     ($($arg:tt)*) => { {
+        let mut v = false;
 		unsafe {
-			if VERBOSE {
-				let r = writeln!(&mut ::std::io::stdout(), $($arg)*);
-				r.expect("failed printing to stdout");
-			}
-		}
+                    v = VERBOSE;
+                }
+        if v {
+                let r = writeln!(&mut ::std::io::stdout(), $($arg)*);
+                r.expect("failed printing to stdout");
+        }
     } }
 );
 
-#[derive(Clone, Serialize, PartialEq)]
+#[derive(Clone, Serialize, PartialEq, Debug)]
 pub enum MatchType {
     Pattern,
     File,
@@ -244,7 +246,7 @@ fn main() {
             eprintln!("Repo path {} does not exist", repo);
             continue;
         }
-        println!("Getting data for repo {}", repo);
+        verbose_print!("Getting data for repo {}", repo);
 
         let client = Arc::new(GitClient::new(repo.to_string()));
 
@@ -295,13 +297,6 @@ fn main() {
                 &files,
                 &pb,
                 move |matched: PatternMatch| {
-                    match matched.match_type {
-                        MatchType::Pattern => {
-                            verbose_print!("\r\n{}: {}", matched.file, matched.text)
-                        }
-                        MatchType::File => verbose_print!("\r\n{}", matched.file),
-                    }
-
                     found_matches.write().unwrap().push_back(matched);
                 },
             )
@@ -328,6 +323,13 @@ fn main() {
                             }
                         }
                     }
+                    verbose_print!(
+                        "{:?} {} in repo {}",
+                        &pattern_match.match_type,
+                        &pattern_match.file,
+                        &pattern_match.repo_path
+                    );
+
                     csv_writer
                         .serialize(pattern_match)
                         .expect("failed to serialize pattern");
