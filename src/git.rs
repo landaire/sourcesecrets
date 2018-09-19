@@ -54,8 +54,7 @@ impl GitClient {
                     date: parts.next().unwrap().to_string(),
                     client: None,
                 }
-            })
-            .collect::<Vec<Commit>>();
+            }).collect::<Vec<Commit>>();
     }
 
     pub fn get_commit_content(&self, commit: &Commit) -> String {

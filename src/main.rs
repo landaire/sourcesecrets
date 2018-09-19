@@ -391,7 +391,38 @@ fn pattern_matcher_thread<F, T>(
                     // ignore @@ lines since that just tells you the line range
                     // and that we're on a new file boundary
                     if line.starts_with("diff --git") {
-                        if in_file && file_index.is_some() {
+                        for file in &files {
+                            // it does, so now let's parse it out
+                            // NOTE: this could easily be broken by paths with spaces...
+                            // we're going to assume that the repos do not contain any folder
+                            // ending with " b/"
+
+                            // 11 is the length of "git --diff a/"
+                            file_name = Some(line.chars().skip(13).collect());
+                            file_name =
+                                Some(file_name.unwrap().split(" b/").next().unwrap().to_string());
+
+                            // just check if the line contains the extension first
+                            if line.contains(&file.extension) {
+                                if file_name.as_ref().unwrap().ends_with(&file.extension) {
+                                    in_file = true;
+                                    file_info = Some(file.clone());
+                                    continue 'outer;
+                                }
+                            }
+                        }
+
+                        file_index = None;
+                        continue;
+                    }
+
+                    if in_file {
+                        if line.starts_with("index ") {
+                            file_index = Some(line.split("..").skip(1).take(1).collect());
+                            continue;
+                        }
+
+                        if file_index.is_some() {
                             // we're in a file that we have a pattern for -- we need to get its
                             // contents now
                             let mut file_data =
@@ -429,36 +460,6 @@ fn pattern_matcher_thread<F, T>(
                             on_found(matched);
 
                             in_file = false;
-                        }
-
-                        for file in &files {
-                            // it does, so now let's parse it out
-                            // NOTE: this could easily be broken by paths with spaces...
-                            // we're going to assume that the repos do not contain any folder
-                            // ending with " b/"
-
-                            // 11 is the length of "git --diff a/"
-                            file_name = Some(line.chars().skip(13).collect());
-                            file_name =
-                                Some(file_name.unwrap().split(" b/").next().unwrap().to_string());
-
-                            // just check if the line contains the extension first
-                            if line.contains(&file.extension) {
-                                if file_name.as_ref().unwrap().ends_with(&file.extension) {
-                                    in_file = true;
-                                    file_info = Some(file.clone());
-                                    continue 'outer;
-                                }
-                            }
-                        }
-
-                        file_index = None;
-                        continue;
-                    }
-
-                    if in_file {
-                        if line.starts_with("index ") {
-                            file_index = Some(line.split("..").skip(1).take(1).collect());
                         }
 
                         continue;
