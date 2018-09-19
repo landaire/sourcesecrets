@@ -52,7 +52,7 @@ pattern = "=\"[\\w\\s]+(Secret|Key)\""
 
 [[patterns]]
 description = "Service Bus"
-pattern = ";SharedAccessKeydescription="
+pattern = ";SharedAccessKey="
 
 [[patterns]]
 description = "Password in code"
