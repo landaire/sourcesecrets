@@ -175,7 +175,11 @@ fn main() {
     let pattern_config: Config = pattern_config.unwrap();
     let mut patterns = pattern_config.patterns.unwrap();
     let mut filters: Option<Vec<Pattern>> = pattern_config.filters;
-    let files = pattern_config.files.unwrap();
+    let mut files = pattern_config.files.unwrap();
+
+    for file in &mut files {
+        file.extension = ".".to_owned() + &file.extension;
+    }
 
     // loop over all of the patterns to compile their regexes
     for pattern in &mut patterns {
@@ -439,8 +443,6 @@ fn pattern_matcher_thread<F, T>(
                                 Some(file_name.unwrap().split(" b/").next().unwrap().to_string());
 
                             // just check if the line contains the extension first
-                            // there will definitely be false positives since we aren't making
-                            // another allocation for the period
                             if line.contains(&file.extension) {
                                 if file_name.as_ref().unwrap().ends_with(&file.extension) {
                                     in_file = true;
