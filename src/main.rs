@@ -39,10 +39,10 @@ static THREAD_DONE_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 macro_rules! verbose_print(
     ($($arg:tt)*) => { {
-        let mut v = false;
-		unsafe {
-                    v = VERBOSE;
-                }
+        let mut v = Default::default();
+        unsafe {
+            v = VERBOSE;
+        }
         if v {
                 let r = writeln!(&mut ::std::io::stdout(), $($arg)*);
                 r.expect("failed printing to stdout");
@@ -186,51 +186,12 @@ fn main() {
 
     // loop over all of the patterns to compile their regexes
     for pattern in &mut patterns {
-        if !pattern.enabled.unwrap_or(true) {
-            continue;
-        }
-
-        if !pattern.case_sensitive.unwrap_or(false) {
-            pattern.pattern = "(?i)".to_owned() + &pattern.pattern;
-        }
-
-        pattern.regex = match Regex::new(&pattern.pattern) {
-            Ok(r) => Some(r),
-            Err(e) => {
-                eprintln!(
-                    "Could not compile pattern {}: {}",
-                    pattern.description.clone(),
-                    e
-                );
-                None
-            }
-        };
+        compile_patterns(&mut filters.as_mut().unwrap());
     }
 
     // loop over all of the patterns to compile their regexes
     if filters.is_some() {
-        let filters = filters.as_mut().unwrap();
-        for filter in &mut filters.into_iter() {
-            if !filter.enabled.unwrap_or(true) {
-                continue;
-            }
-
-            if !filter.case_sensitive.unwrap_or(false) {
-                filter.pattern = "(?i)".to_owned() + &filter.pattern;
-            }
-
-            filter.regex = match Regex::new(&filter.pattern) {
-                Ok(r) => Some(r),
-                Err(e) => {
-                    eprintln!(
-                        "Could not compile filter {}: {}",
-                        filter.description.clone(),
-                        e
-                    );
-                    None
-                }
-            };
-        }
+        compile_patterns(&mut filters.as_mut().unwrap());
     }
 
     let mut all_commits = Vec::new();
@@ -346,6 +307,33 @@ fn main() {
         if let Err(err) = thread.join() {
             eprintln!("Error joining thread: {:?}", err);
         }
+    }
+}
+
+//
+// Compile regex patterns for a given Pattern struct
+//
+fn compile_patterns(patterns: &mut [Pattern]) {
+    for mut pattern in patterns {
+        if !pattern.enabled.unwrap_or(true) {
+            continue;
+        }
+
+        if !pattern.case_sensitive.unwrap_or(false) {
+            pattern.pattern = "(?i)".to_owned() + &pattern.pattern;
+        }
+
+        pattern.regex = match Regex::new(&pattern.pattern) {
+            Ok(r) => Some(r),
+            Err(e) => {
+                eprintln!(
+                    "Could not compile pattern {}: {}",
+                    pattern.description.clone(),
+                    e
+                );
+                None
+            }
+        };
     }
 }
 
